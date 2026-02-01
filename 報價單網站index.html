@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>公仔報價系統 V2.5</title>
+    <style>
+        :root {
+            --primary-blue: #007AFF;
+            --primary-red: #FF3B30;
+            --secondary-gray: #8E8E93;
+            --light-bg: #F2F2F7;
+            --card-bg: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--light-bg);
+            margin: 0; padding: 0; color: #333; line-height: 1.5;
+        }
+
+        #loader {
+            position: fixed; inset: 0; background: white;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000;
+        }
+
+        header {
+            background: white; padding: 15px; text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 1.1rem; }
+
+        .tabs-container {
+            display: flex; overflow-x: auto; white-space: nowrap;
+            padding: 5px 0; gap: 10px; scrollbar-width: none;
+        }
+        .tabs-container::-webkit-scrollbar { display: none; }
+
+        .tab {
+            padding: 8px 18px; background: #e5e5ea; border-radius: 20px;
+            font-size: 14px; border: none; color: #555; flex-shrink: 0; font-weight: 500;
+        }
+        .tab.active { background: var(--primary-blue); color: white; }
+
+        .product-list { padding: 15px; padding-bottom: 260px; }
+
+        .custom-box {
+            background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px;
+            border: 2px dashed var(--primary-blue);
+        }
+        .custom-box input {
+            width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;
+        }
+
+        .product-item {
+            background: var(--card-bg); border-radius: 12px; padding: 15px;
+            margin-bottom: 12px; display: flex; align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .checkbox-wrapper { margin-right: 15px; }
+        input[type="checkbox"] { width: 26px; height: 26px; cursor: pointer; }
+
+        .product-info { flex-grow: 1; cursor: pointer; display: flex; flex-direction: column; justify-content: center; }
+        .product-name { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+        
+        .price-wrapper { display: flex; align-items: center; font-size: 14px; color: var(--secondary-gray); }
+        .price-input {
+            width: 70px; border: 1px solid transparent; background: #f0f0f0; 
+            border-radius: 6px; padding: 4px; margin-left: 5px; font-size: 14px; 
+            color: #333; font-weight: bold; text-align: center;
+        }
+        .price-input:focus { border-color: var(--primary-blue); background: white; outline: none; }
+
+        .qty-controls { display: flex; align-items: center; gap: 8px; background: #f0f0f0; padding: 5px; border-radius: 20px; margin-left: 10px;}
+        .btn-qty { width: 32px; height: 32px; border-radius: 50%; border: none; background: white; font-size: 18px; font-weight: bold; }
+        .qty-input { width: 25px; text-align: center; border: none; font-weight: bold; background: transparent; }
+
+        footer {
+            position: fixed; bottom: 0; width: 100%; background: rgba(255,255,255,0.98);
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.1); 
+            padding: 15px; padding-bottom: env(safe-area-inset-bottom, 15px);
+        }
+
+        .footer-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .total-display { font-size: 1.3rem; font-weight: bold; color: var(--primary-red); }
+
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn-action {
+            padding: 14px; border-radius: 10px; border: none; color: white;
+            font-weight: bold; font-size: 15px; cursor: pointer; text-align: center;
+        }
+        .btn-copy-detail { background: var(--primary-blue); }
+        .btn-copy-pay { background: var(--primary-red); }
+        .btn-reset { background: #8e8e93; grid-column: span 2; margin-top: 5px; height: 35px; padding: 0; font-size: 12px; border: none; border-radius: 8px; color: white; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            display: none; justify-content: center; align-items: center; z-index: 1500; padding: 20px;
+        }
+        .modal-content {
+            background: white; width: 100%; max-width: 450px; border-radius: 20px;
+            max-height: 85vh; overflow-y: auto; padding: 20px;
+        }
+        .preview-section {
+            background: #f9f9f9; padding: 12px; border-radius: 10px; border: 1px solid #eee; margin-bottom: 15px;
+            white-space: pre-wrap; font-size: 13px; color: #444; font-family: monospace;
+        }
+        .preview-label { font-weight: bold; color: #666; font-size: 12px; margin-bottom: 5px; display: block; }
+
+        .toast {
+            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 12px 24px;
+            border-radius: 10px; display: none; z-index: 2001;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">連線中，請稍候...</div>
+
+<header>
+    <h1>報價系統</h1>
+    <div class="tabs-container" id="tabs"></div>
+</header>
+
+<div class="product-list" id="productList"></div>
+
+<footer>
+    <div class="footer-top">
+        <button onclick="showPreview()" style="background:none; border:1px solid #007AFF; color:#007AFF; padding:6px 15px; border-radius:15px; font-size:13px; font-weight: bold;">🔍 預覽確認</button>
+        <div class="total-display">總計: $<span id="totalPrice">0</span></div>
+    </div>
+    <div class="button-group">
+        <button class="btn-action btn-copy-detail" onclick="copyDetail()">複製報價單</button>
+        <button class="btn-action btn-copy-pay" onclick="copyPaymentLink()">複製商品明細</button>
+        <button class="btn-action btn-reset" onclick="resetForm()">全部清空</button>
+    </div>
+</footer>
+
+<div id="modalOverlay" class="modal-overlay" onclick="hidePreview()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin-top:0; font-size:16px;">內容預覽</h3>
+        <span class="preview-label">1. 報價單格式 (按鈕A):</span>
+        <div id="previewQuote" class="preview-section"></div>
+        <span class="preview-label">2. 商品明細格式 (按鈕B):</span>
+        <div id="previewPay" class="preview-section"></div>
+        <button onclick="hidePreview()" style="width:100%; margin-top:10px; padding:12px; border-radius:10px; border:none; background:#007AFF; color:white; font-weight:bold;">返回修改</button>
+    </div>
+</div>
+
+<div id="toast" class="toast">已複製</div>
+
+<script>
+    // ==========================================
+    // ▼▼▼ 您的 Google CSV 網址 (已自動修正格式) ▼▼▼
+    // ==========================================
+    const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRQrVM-SFI0nVAueFvsGsRVCkJvwRsATM9F_VG0EWvcNk6Pe_JHX8ZJSVnzwWtD42UIcQZvyOmcYDDl/pub?output=csv';
+    // ==========================================
+
+    let products = [], selections = {}, customItems = [], categories = [], currentCategory = '';
+
+    window.onload = fetchData;
+
+    async function fetchData() {
+        try {
+            const response = await fetch(googleSheetUrl + '&t=' + new Date().getTime());
+            const csvData = await response.text();
+            parseCSV(csvData);
+            document.getElementById('loader').style.display = 'none';
+        } catch (e) { 
+            document.getElementById('loader').innerHTML = "讀取失敗，請確認網址是否正確且已發布"; 
+        }
+    }
+
+    function parseCSV(csv) {
+        const lines = csv.split(/\r?\n/);
+        const catSet = new Set();
+        lines.slice(1).forEach(line => {
+            const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            if (cols.length >= 3) {
+                const [cat, name, priceStr] = cols.map(c => c.replace(/"/g, '').trim());
+                const price = parseInt(priceStr.replace(/[^0-9]/g, ''));
+                if (cat && name && !isNaN(price)) {
+                    products.push({ cat, name, price });
+                    catSet.add(cat);
+                    if (!selections[name]) selections[name] = { checked: false, qty: 1, price: price, cat: cat };
+                }
+            }
+        });
+        categories = Array.from(catSet);
+        renderTabs();
+        switchTab(categories[0]);
+    }
+
+    function renderTabs() {
+        const tabsDiv = document.getElementById('tabs');
+        tabsDiv.innerHTML = categories.map(c => `<button class="tab" id="tab-${c}" onclick="switchTab('${c}')">${c}</button>`).join('') + 
+            `<button class="tab" id="tab-CUSTOM" onclick="switchTab('CUSTOM')">➕ 臨時手動</button>`;
+    }
+
+    function switchTab(cat) {
+        currentCategory = cat;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${cat}`).classList.add('active');
+        renderContent();
+    }
+
+    function renderContent() {
+        const listDiv = document.getElementById('productList');
+        if (currentCategory === 'CUSTOM') {
+            listDiv.innerHTML = `
+                <div class="custom-box">
+                    <p style="margin:0 0 10px 0; font-weight:bold; color:#007AFF;">新增臨時商品</p>
+                    <input type="text" id="cName" placeholder="品名">
+                    <input type="number" id="cPrice" placeholder="單價">
+                    <button onclick="addCustom()" style="width:100%; padding:12px; background:#007AFF; color:white; border:none; border-radius:8px; font-weight:bold;">加入報價單</button>
+                </div>
+                <div id="customList"></div>`;
+            renderCustomList();
+        } else {
+            listDiv.innerHTML = products.filter(p => p.cat === currentCategory).map(p => {
+                const currentPrice = selections[p.name].price;
+                return getItemHtml(p.name, currentPrice);
+            }).join('');
+        }
+    }
+
+    function getItemHtml(name, price) {
+        const s = selections[name];
+        return `<div class="product-item">
+            <div class="checkbox-wrapper"><input type="checkbox" id="chk-${name}" ${s.checked ? 'checked' : ''} onchange="toggleSelect('${name}', this.checked)"></div>
+            <div class="product-info" onclick="toggleLabel('${name}')">
+                <span class="product-name">${name}</span>
+                <div class="price-wrapper">
+                    $ <input type="number" class="price-input" value="${price}" onchange="updatePrice('${name}', this.value)" onclick="event.stopPropagation()">
+                </div>
+            </div>
+            <div class="qty-controls">
+                <button class="btn-qty" onclick="updateQty('${name}',-1)">-</button>
+                <input type="number" class="qty-input" value="${s.qty}" readonly>
+                <button class="btn-qty" onclick="updateQty('${name}',1)">+</button>
+            </div>
+        </div>`;
+    }
+
+    function addCustom() {
+        const n = document.getElementById('cName').value, p = parseInt(document.getElementById('cPrice').value);
+        if (!n || isNaN(p)) return alert('請填寫完整名稱與金額');
+        if (!selections[n]) {
+            customItems.push({ name: n, price: p });
+            selections[n] = { checked: true, qty: 1, price: p, cat: '手動新增' };
+            renderCustomList(); calculateTotal();
+            document.getElementById('cName').value = ''; document.getElementById('cPrice').value = '';
+        } else { alert('名稱重複了'); }
+    }
+
+    function renderCustomList() {
+        const area = document.getElementById('customList');
+        if (area) area.innerHTML = customItems.map(i => getItemHtml(i.name, i.price)).join('');
+    }
+
+    function updatePrice(name, newPrice) {
+        const p = parseInt(newPrice);
+        if (isNaN(p)) return;
+        selections[name].price = p;
+        calculateTotal();
+    }
+
+    function toggleLabel(n) { const chk = document.getElementById(`chk-${n}`); chk.checked = !chk.checked; toggleSelect(n, chk.checked); }
+    function toggleSelect(n, c) { selections[n].checked = c; calculateTotal(); }
+    function updateQty(n, d) { selections[n].qty = Math.max(1, selections[n].qty + d); renderContent(); calculateTotal(); }
+
+    function calculateTotal() {
+        let total = 0;
+        for (let k in selections) if (selections[k].checked) total += selections[k].price * selections[k].qty;
+        document.getElementById('totalPrice').innerText = total.toLocaleString();
+        return total;
+    }
+
+    function getQuoteText() {
+        let total = 0, txt = "【客製化公仔報價單】\n";
+        let hasItem = false;
+        for (let k in selections) {
+            if (selections[k].checked) {
+                let sub = selections[k].price * selections[k].qty;
+                total += sub;
+                txt += `${k} x${selections[k].qty}: $${sub.toLocaleString()}\n`;
+                hasItem = true;
+            }
+        }
+        if (!hasItem) return "尚未選取商品";
+        
+        txt += `------------------\n總金額: $${total.toLocaleString()}\n\n`;
+        // 保留報價單的運費說明
+        txt += `**運費結帳系統會自動加上**\n`;
+        txt += `7-11超取60元／宅配130元\n`;
+        txt += `滿3600超取免運`;
+        
+        return txt;
+    }
+
+    // 商品明細：完全簡潔版
+    function getPaymentText() {
+        let total = 0;
+        let items = []; 
+        let hasItem = false;
+
+        for (let k in selections) {
+            if (selections[k].checked) {
+                let s = selections[k];
+                total += s.price * s.qty;
+                hasItem = true;
+
+                if (s.cat === "其他") {
+                    continue; 
+                }
+
+                let itemStr = s.qty > 1 ? `${k}*${s.qty}` : k;
+                items.push(itemStr);
+            }
+        }
+        if (!hasItem) return "尚未選取商品";
+        
+        let finalItemString = items.join('/');
+        let finalAmount = total; 
+
+        return `【商品名稱請直接複製貼上👉🏼付款連結】\n\n` + 
+               `商品名稱：${finalItemString}\n` +
+               `IG帳號：（請填寫）\n` +
+               `金額：$${finalAmount}`;
+    }
+
+    function showPreview() {
+        document.getElementById('previewQuote').innerText = getQuoteText();
+        document.getElementById('previewPay').innerText = getPaymentText();
+        document.getElementById('modalOverlay').style.display = 'flex';
+    }
+
+    function hidePreview() { document.getElementById('modalOverlay').style.display = 'none'; }
+
+    function copyDetail() {
+        const txt = getQuoteText();
+        if (txt === "尚未選取商品") return alert(txt);
+        doCopy(txt);
+    }
+
+    function copyPaymentLink() {
+        const txt = getPaymentText();
+        if (txt === "尚未選取商品") return alert(txt);
+        doCopy(txt);
+    }
+
+    function resetForm() { if (confirm('確定要全部清空重置嗎？')) location.reload(); }
+
+    function doCopy(t) {
+        const el = document.createElement("textarea"); el.value = t; document.body.appendChild(el);
+        el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        const toast = document.getElementById('toast'); toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 1500);
+    }
+</script>
+</body>
+</html>
